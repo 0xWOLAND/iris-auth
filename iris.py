@@ -14,7 +14,7 @@ def detect_iris_hough(
     """
     Detect pupil and iris using Hough transform and return their parameters and mask.
     """
-    smoothed = cv2.GaussianBlur(image, (9, 9), 12)
+    smoothed = cv2.GaussianBlur(image, (9, 9), 3)
     mask = np.zeros_like(image, dtype=np.uint8)
 
     # Detect pupil (inner circle)
@@ -30,6 +30,7 @@ def detect_iris_hough(
     )
 
     if pupil_circles is None:
+        print("No pupil circles detected")
         return None
 
     pupil = np.uint16(np.around(pupil_circles))[0][0]
@@ -53,6 +54,7 @@ def detect_iris_hough(
     )
 
     if outer_circles is None:
+        print("No outer circles detected")
         return None
 
     outer = np.uint16(np.around(outer_circles))[0][0]

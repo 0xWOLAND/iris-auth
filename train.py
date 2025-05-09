@@ -12,6 +12,8 @@ def main():
     X1, X2, y = load_dataset("dataset", segmenter)
     X1, X2 = X1[..., None], X2[..., None]  # add channel dim
 
+    print(f'X1 shape: {X1.shape}, X2 shape: {X2.shape}, y shape: {y.shape}')
+
     # Split data
     x1_train, x1_val, x2_train, x2_val, y_train, y_val = train_test_split(
         X1, X2, y, test_size=0.3, random_state=42
@@ -28,13 +30,13 @@ def main():
         batch_size=32,
         callbacks=[
             EarlyStopping(monitor="val_loss", patience=10, restore_best_weights=True),
-            ModelCheckpoint("best_regressor.h5", monitor="val_loss", save_best_only=True),
+            ModelCheckpoint("models/best_regressor.h5", monitor="val_loss", save_best_only=True),
             ReduceLROnPlateau(monitor="val_loss", factor=0.1, patience=5, verbose=1)
         ],
         verbose=2
     )
 
-    model.save("final_best_regressor.h5")
+    model.save("models/final_best_regressor.h5")
 
 if __name__ == "__main__":
     main()

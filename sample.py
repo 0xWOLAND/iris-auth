@@ -1,63 +1,30 @@
-import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-import os
-from iris import detect_iris_hough, unwrap_iris
-from preprocess import IrisSegmentation
 
+# Load the cached data
+data = np.load('cache/processed_data.npz')
 
-def show_single_image(image_path: str, segmenter):
-    img = cv2.imread(image_path)
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+# Get the arrays
+X1 = data['X1']
+X2 = data['X2']
+y = data['y']
 
-    # Segmentation
-    seg_mask = segmenter.extract(img)
-    seg_mask_resized = cv2.resize(seg_mask, (img_gray.shape[1], img_gray.shape[0]), interpolation=cv2.INTER_NEAREST)
-    masked = cv2.bitwise_and(img_gray, img_gray, mask=seg_mask_resized)
+# Print shapes
+print("Dataset shapes:")
+print(f"X1 shape: {X1.shape}")
+print(f"X2 shape: {X2.shape}")
+print(f"y shape: {y.shape}")
 
-    # Circle detection
-    circles = detect_iris_hough(masked)
-    if circles is None:
-        print("No circles detected.")
-        return
+# Print some statistics
+print("\nStatistics:")
+print(f"Number of positive pairs (y=1): {np.sum(y == 1)}")
+print(f"Number of negative pairs (y=0): {np.sum(y == 0)}")
+print(f"X1 value range: [{X1.min():.3f}, {X1.max():.3f}]")
+print(f"X2 value range: [{X2.min():.3f}, {X2.max():.3f}]")
 
-    # Draw annotations
-    annotated = img_rgb.copy()
-    for key, color in zip(['inner_circle', 'outer_circle'], [(0, 255, 0), (255, 0, 0)]):
-        c = circles[key]
-        cv2.circle(annotated, (int(c['x']), int(c['y'])), int(c['radius']), color, 2)
-
-    # Unwrap
-    unwrapped = unwrap_iris(
-        masked,
-        (circles['inner_circle']['x'], circles['inner_circle']['y'], circles['inner_circle']['radius']),
-        (circles['outer_circle']['x'], circles['outer_circle']['y'], circles['outer_circle']['radius']),
-    )
-
-    # Plot
-    images = [
-        ("Original", img_gray, 'gray'),
-        ("Segmentation Mask", seg_mask, 'gray'),
-        ("Masked Iris", masked, 'gray'),
-        ("Annotated", annotated, None),
-        ("Unwrapped", unwrapped, 'gray'),
-    ]
-    plt.figure(figsize=(15, 4))
-    for i, (title, im, cmap) in enumerate(images):
-        plt.subplot(1, 5, i + 1)
-        plt.title(title)
-        plt.imshow(im, cmap=cmap)
-        plt.axis("off")
-    plt.tight_layout()
-    plt.show()
-
-
-if __name__ == "__main__":
-    image_file = sorted([
-        f for f in os.listdir("dataset/039") if f.lower().endswith(".jpg")
-    ])[0]
-    image_path = os.path.join("dataset/039", image_file)
-
-    segmenter = IrisSegmentation("models/unet_model.h5")
-    show_single_image(image_path, segmenter)
+# Print a few sample pairs
+print("\nSample pairs:")
+for i in range(3):
+    print(f"\nPair {i+1}:")
+    print(f"X1[{i}] shape: {X1[i].shape}")
+    print(f"X2[{i}] shape: {X2[i].shape}")
+    print(f"Label: {y[i]}")

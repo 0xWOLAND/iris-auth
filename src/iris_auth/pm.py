@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Any
 
+import appdirs
 import base64
 import cv2
 import iris
@@ -12,7 +13,9 @@ from iris.io.dataclasses import IrisTemplate
 
 class IrisPasswordManager:
     def __init__(self, db_path: str = "passwords.enc") -> None:
-        self.db_path = Path(db_path).with_suffix('.npz')
+        app_dir = Path(appdirs.user_data_dir("iris-auth", appauthor=False))
+        app_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path = app_dir / f"{db_path}.npz"
         self.matcher = iris.HammingDistanceMatcher()
         self.threshold = 0.37
 
@@ -71,3 +74,7 @@ class IrisPasswordManager:
     def fetch(self, img_path: str) -> Dict[str, Dict[str, str]]:
         self.verify(img_path)
         return self._load()[1]
+    
+    def clear(self) -> None:
+        if self.db_path.exists():
+            self.db_path.unlink()

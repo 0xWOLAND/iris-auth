@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from iris_auth.password_manager import IrisPasswordManager
+from iris_auth import IrisPasswordManager
 
 def test_password_manager():
     pm = IrisPasswordManager("test_passwords.enc")
@@ -25,10 +25,10 @@ def test_password_manager():
         pm.save(img1, "github", "user1", "github123")
         passwords = pm.fetch(img1)
         assert len(passwords) == 2
-        
-    finally:
-        if os.path.exists("test_passwords.enc"):
-            os.remove("test_passwords.enc")
+        pm.clear()
+    except Exception as e:
+        print(e)
+        raise e
 
 if __name__ == "__main__":
     test_password_manager() 

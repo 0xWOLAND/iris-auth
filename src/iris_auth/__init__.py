@@ -1,1 +1,1 @@
- 
+from iris_auth.password_manager import IrisPasswordManager

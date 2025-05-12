@@ -12,16 +12,12 @@ description = "Iris-based authentication and password management system"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "opencv-python",
-    "cryptography",
+    "cryptography>=44.0.3",
+    "open-iris>=1.0.0",
+    "opencv-python>=4.8.1.78",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest",
-    "pytest-cov",
+    "pytest>=8.3.5",
 ]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]

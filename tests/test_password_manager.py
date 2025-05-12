@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from password_manager import IrisPasswordManager
+from iris_auth.password_manager import IrisPasswordManager
 
 def test_password_manager():
     # Initialize password manager

@@ -13,31 +13,22 @@ pip install iris-auth
 ```python
 from iris_auth import IrisPasswordManager
 
-# Initialize the password manager
-pm = IrisPasswordManager("passwords.enc")
+# Initialize password manager
+pm = IrisPasswordManager()
 
-# Add a password
-pm.add_password("iris.jpg", "gmail", "user@example.com", "secret123")
+# Register a user
+pm.register("iris.jpg", "user1")
 
-# Retrieve passwords
-passwords = pm.get_passwords("iris.jpg")
+# Save a password
+pm.set("iris.jpg", "user1", "gmail", "user@example.com", "secret123")
+
+# Get all passwords
+passwords = pm.get("iris.jpg", "user1")
+print(passwords)  # {'gmail': {'username': 'user@example.com', 'password': 'secret123'}}
+
+# Clear all data
+pm.clear()
 ```
-
-## Development
-
-1. Clone the repository
-2. Install development dependencies:
-   ```bash
-   pip install -e ".[dev]"
-   ```
-3. Run tests:
-   ```bash
-   pytest
-   ```
-
-## Security
-
-This package uses iris biometrics for authentication and encryption. The iris template is used to derive an encryption key using PBKDF2, which is then used to encrypt/decrypt passwords using Fernet symmetric encryption.
 
 ## License
 

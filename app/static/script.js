@@ -1,3 +1,6 @@
+let currentImageInput = null;
+let stream = null;
+
 // Helper function to convert image to base64
 async function imageToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -19,6 +22,62 @@ function showMessage(elementId, message, isError = false) {
     }, 5000);
 }
 
+// Camera functions
+async function startCamera(inputId) {
+    currentImageInput = inputId;
+    const modal = document.getElementById('cameraModal');
+    const video = document.getElementById('camera');
+    
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        modal.style.display = 'block';
+        
+        // Add keyboard listener
+        document.addEventListener('keydown', handleKeyPress);
+    } catch (err) {
+        showMessage('passwordMessage', 'Error accessing camera: ' + err.message, true);
+    }
+}
+
+function handleKeyPress(event) {
+    if (event.code === 'Space' && document.getElementById('cameraModal').style.display === 'block') {
+        event.preventDefault(); // Prevent page scroll
+        captureImage();
+    }
+}
+
+async function captureImage() {
+    const video = document.getElementById('camera');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    // Convert to blob and create file
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+    const file = new File([blob], 'camera.jpg', { type: 'image/jpeg' });
+    
+    // Set the file input
+    const input = document.getElementById(currentImageInput);
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    input.files = dataTransfer.files;
+    
+    // Clean up
+    stopCamera();
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    document.getElementById('cameraModal').style.display = 'none';
+    // Remove keyboard listener
+    document.removeEventListener('keydown', handleKeyPress);
+}
+
 // Register a new user
 async function register() {
     try {
@@ -30,17 +89,26 @@ async function register() {
             return;
         }
 
+        const imageBase64 = await imageToBase64(imageFile);
+        
         const response = await fetch('/register', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 user_id: userId,
-                image: await imageToBase64(imageFile)
+                image: imageBase64
             })
         });
 
         const data = await response.json();
-        showMessage('registerMessage', response.ok ? 'Registration successful!' : (data.error || 'Registration failed'), !response.ok);
+        
+        if (response.ok) {
+            showMessage('registerMessage', 'Registration successful!');
+        } else {
+            showMessage('registerMessage', data.error || 'Registration failed', true);
+        }
     } catch (error) {
         showMessage('registerMessage', 'Error: ' + error.message, true);
     }

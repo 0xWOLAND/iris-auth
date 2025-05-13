@@ -41,9 +41,14 @@ async function startCamera(inputId) {
 }
 
 function handleKeyPress(event) {
-    if (event.code === 'Space' && document.getElementById('cameraModal').style.display === 'block') {
-        event.preventDefault(); // Prevent page scroll
-        captureImage();
+    if (document.getElementById('cameraModal').style.display === 'block') {
+        if (event.code === 'Space') {
+            event.preventDefault(); // Prevent page scroll
+            captureImage();
+        } else if (event.code === 'Escape') {
+            event.preventDefault();
+            stopCamera();
+        }
     }
 }
 

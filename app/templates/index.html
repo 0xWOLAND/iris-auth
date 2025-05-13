@@ -7,99 +7,133 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 10px;
+            font-size: 14px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
         }
         .section {
-            margin-bottom: 20px;
-            padding: 20px;
+            padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            background: #f9f9f9;
         }
         .form-group {
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
+            font-size: 12px;
         }
         input, button {
-            padding: 8px;
-            margin-bottom: 10px;
+            padding: 4px;
+            margin-bottom: 5px;
             width: 100%;
             box-sizing: border-box;
+            font-size: 12px;
         }
         button {
             background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
+            padding: 6px;
         }
         button:hover {
             background-color: #45a049;
         }
         #passwords {
-            margin-top: 20px;
+            grid-column: 1 / -1;
         }
         .error {
             color: red;
-            margin-top: 10px;
+            margin-top: 5px;
+            font-size: 12px;
         }
         .success {
             color: green;
-            margin-top: 10px;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        h1 {
+            text-align: center;
+            margin: 0 0 10px 0;
+            font-size: 20px;
+        }
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        #passwordList {
+            margin: 0;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
         }
     </style>
 </head>
 <body>
     <h1>Iris Password Manager</h1>
 
-    <div class="section">
-        <h2>Register</h2>
-        <div class="form-group">
-            <label for="registerUserId">User ID:</label>
-            <input type="text" id="registerUserId" required>
+    <div class="container">
+        <div class="section">
+            <h2>Register</h2>
+            <div class="form-group">
+                <label for="registerUserId">User ID:</label>
+                <input type="text" id="registerUserId" required>
+            </div>
+            <div class="form-group">
+                <label for="registerImage">Iris Image:</label>
+                <input type="file" id="registerImage" accept="image/*" required>
+            </div>
+            <button onclick="register()">Register</button>
+            <div id="registerMessage"></div>
         </div>
-        <div class="form-group">
-            <label for="registerImage">Iris Image:</label>
-            <input type="file" id="registerImage" accept="image/*" required>
-        </div>
-        <button onclick="register()">Register</button>
-        <div id="registerMessage"></div>
-    </div>
 
-    <div class="section">
-        <h2>Manage Passwords</h2>
-        <div class="form-group">
-            <label for="userId">User ID:</label>
-            <input type="text" id="userId" required>
+        <div class="section">
+            <h2>Manage Passwords</h2>
+            <div class="form-group">
+                <label for="userId">User ID:</label>
+                <input type="text" id="userId" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Iris Image:</label>
+                <input type="file" id="image" accept="image/*" required>
+            </div>
+            <div class="form-group">
+                <label for="service">Service:</label>
+                <input type="text" id="service" required>
+            </div>
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" required>
+            </div>
+            <div class="button-group">
+                <button onclick="setPassword()">Save Password</button>
+                <button onclick="deletePassword()">Delete Password</button>
+            </div>
+            <div id="passwordMessage"></div>
         </div>
-        <div class="form-group">
-            <label for="image">Iris Image:</label>
-            <input type="file" id="image" accept="image/*" required>
-        </div>
-        <div class="form-group">
-            <label for="service">Service:</label>
-            <input type="text" id="service" required>
-        </div>
-        <div class="form-group">
-            <label for="username">Username:</label>
-            <input type="text" id="username" required>
-        </div>
-        <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" required>
-        </div>
-        <button onclick="setPassword()">Save Password</button>
-        <button onclick="deletePassword()">Delete Password</button>
-        <button onclick="getPasswords()">Get Passwords</button>
-        <div id="passwordMessage"></div>
-    </div>
 
-    <div id="passwords" class="section">
-        <h2>Your Passwords</h2>
-        <pre id="passwordList"></pre>
+        <div id="passwords" class="section">
+            <h2>Your Passwords</h2>
+            <pre id="passwordList"></pre>
+        </div>
     </div>
 
     <script src="/static/script.js"></script>

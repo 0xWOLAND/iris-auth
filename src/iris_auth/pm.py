@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple, Any, TypedDict
 
 import appdirs
+import base64
 import cv2
 import iris
 import numpy as np
@@ -30,6 +31,32 @@ class IrisPasswordManager:
         self.db_path = app_dir / f"{db_path}.npz"
         self.matcher = iris.HammingDistanceMatcher()
         self.threshold = 0.37
+        self.salt = b'iris_auth_salt'  # In production, this should be unique per installation
+
+    def _derive_key(self, template: Dict[str, Any]) -> bytes:
+        """Derive an encryption key from the iris template."""
+        template_bytes = np.array(template['iris_codes']).tobytes()
+        
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=self.salt,
+            iterations=100000,
+        )
+        key = base64.urlsafe_b64encode(kdf.derive(template_bytes))
+        return key
+
+    def _encrypt(self, data: Dict, template: Dict[str, Any]) -> bytes:
+        """Encrypt data using a key derived from the iris template."""
+        key = self._derive_key(template)
+        f = Fernet(key)
+        return f.encrypt(str(data).encode())
+
+    def _decrypt(self, data: bytes, template: Dict[str, Any]) -> Dict:
+        """Decrypt data using a key derived from the iris template."""
+        key = self._derive_key(template)
+        f = Fernet(key)
+        return eval(f.decrypt(data).decode()) 
 
     @staticmethod
     def _to_template(t: Dict[str, Any]) -> IrisTemplate:
@@ -43,17 +70,33 @@ class IrisPasswordManager:
         try:
             data = np.load(self.db_path, allow_pickle=True)
             templates = data['templates'].item() if 'templates' in data else {}
-            passwords = data['passwords'].item() if 'passwords' in data else {}
+            encrypted_passwords = data['passwords'].item() if 'passwords' in data else {}
+            
+            # Decrypt passwords using the corresponding template
+            passwords = {}
+            for user_id, user_passwords in encrypted_passwords.items():
+                if user_id in templates:
+                    try:
+                        passwords[user_id] = self._decrypt(user_passwords, templates[user_id])
+                    except Exception:
+                        passwords[user_id] = {}
+            
             return Database(templates=templates, passwords=passwords)
         except Exception:
             return Database(templates={}, passwords={})
 
     def _store(self, db: Database) -> None:
         """Store templates and passwords in the database file."""
+        encrypted_passwords = {
+            user_id: self._encrypt(user_passwords, db.templates[user_id])
+            for user_id, user_passwords in db.passwords.items()
+            if user_id in db.templates
+        }
+        
         np.savez(
             self.db_path,
             templates=np.array(db.templates, dtype=object),
-            passwords=np.array(db.passwords, dtype=object)
+            passwords=np.array(encrypted_passwords, dtype=object)
         )
 
     def _load_template_from_image(self, img_path: str) -> Dict[str, Any]:
@@ -72,7 +115,7 @@ class IrisPasswordManager:
             None
         )
 
-    def register(self, img_path: str, user_id: str) -> None:
+    def register(self, user_id: str, img_path: str) -> None:
         """Register a new user with their iris template."""
         db = self._load()
         if user_id in db.templates:
@@ -82,7 +125,7 @@ class IrisPasswordManager:
         db.templates[user_id] = template
         self._store(db)
 
-    def check(self, img_path: str, user_id: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
+    def check(self, user_id: Optional[str], img_path: str) -> Tuple[str, Dict[str, Any]]:
         """Verify an iris image against stored templates."""
         template = self._load_template_from_image(img_path)
         db = self._load()
@@ -99,28 +142,27 @@ class IrisPasswordManager:
                 self._to_template(template),
                 self._to_template(stored_template)
             ) < self.threshold:
-                return user_id, template
+                return user_id, stored_template
         else:
             if matching_user := self._find_matching_template(template, db.templates):
-                return matching_user, template
+                return matching_user, db.templates[matching_user]
 
         raise ValueError("Authentication failed")
 
-    def set(self, img_path: str, user_id: str, service: str, username: str, password: str) -> None:
+    def set(self, user_id: str, img_path: str, service: str, username: str, password: str) -> None:
         """Save a password for a service using iris authentication."""
-        user_id, template = self.check(img_path, user_id)
+        user_id, _ = self.check(user_id, img_path)
         db = self._load()
         
-        db.templates[user_id] = template
         if user_id not in db.passwords:
             db.passwords[user_id] = {}
         db.passwords[user_id][service] = PasswordEntry(username=username, password=password)
         
         self._store(db)
 
-    def get(self, img_path: str, user_id: Optional[str] = None) -> Dict[str, PasswordEntry]:
+    def get(self, user_id: Optional[str], img_path: str) -> Dict[str, PasswordEntry]:
         """Retrieve all passwords after iris authentication."""
-        user_id, _ = self.check(img_path, user_id)
+        user_id, _ = self.check(user_id, img_path)
         return self._load().passwords.get(user_id, {})
     
     def clear(self) -> None:

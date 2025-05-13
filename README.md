@@ -2,12 +2,6 @@
 
 A secure password manager that uses iris biometrics for authentication.
 
-## Installation
-
-```bash
-pip install iris-auth
-```
-
 ## Usage
 
 ```python

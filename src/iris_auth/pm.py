@@ -133,7 +133,7 @@ class IrisPasswordManager:
         self._store(db)
         del template
 
-    def _check(self, user_id: Optional[str], img_path: str) -> Tuple[str, Dict[str, Any]]:
+    def _find(self, user_id: Optional[str], img_path: str) -> Tuple[str, Dict[str, Any]]:
         """Verify an iris image against stored templates."""
         template = self._load_template_from_image(img_path)
         db = self._load()
@@ -168,7 +168,7 @@ class IrisPasswordManager:
         Returns:
             Dict mapping service names to lists of password entries, or a single service's entries if service is specified
         """
-        user_id, _ = self._check(user_id, img_path)
+        user_id, _ = self._find(user_id, img_path)
         db = self._load()
         
         if user_id not in db.passwords:
@@ -187,7 +187,7 @@ class IrisPasswordManager:
         
         If a password already exists for the given username and service, it will be overwritten.
         """
-        user_id, _ = self._check(user_id, img_path)
+        user_id, _ = self._find(user_id, img_path)
         db = self._load()
         
         if user_id not in db.passwords:
@@ -218,7 +218,7 @@ class IrisPasswordManager:
         Raises:
             ValueError: If authentication fails or if the username doesn't exist for the service
         """
-        user_id, _ = self._check(user_id, img_path)
+        user_id, _ = self._find(user_id, img_path)
         db = self._load()
         
         if user_id not in db.passwords or service not in db.passwords[user_id]:

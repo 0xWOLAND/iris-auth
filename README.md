@@ -34,7 +34,7 @@ pm.delete("user1", "path/to/iris/image.jpg", "gmail", "user1@example.com")
 pm.clear()
 ```
 
-## Interfae 
+## Interface
 
 ### register
 
@@ -47,21 +47,6 @@ Register a new user with their iris template.
 
 **Raises:**
 - `ValueError`: If the user is already registered
-
-### check
-
-Verify an iris image against stored templates.
-
-`check(user_id: Optional[str], img_path: str) -> Tuple[str, Dict[str, Any]]`
-
-- `user_id`: Optional user ID to check against. If None, will search for matching template
-- `img_path`: Path to the iris image for authentication
-
-**Returns:**
-- Tuple of (user_id, template) if authentication succeeds
-
-**Raises:**
-- `ValueError`: If no users are registered, user not found, or authentication fails
 
 ### get
 
@@ -107,7 +92,8 @@ Delete a specific username/password combination for a service.
 **Raises:**
 - `ValueError`: If authentication fails, service not found, or username doesn't exist
 
-##### clear
+### clear
+
 Delete the password database file.
 
 ## Testing 

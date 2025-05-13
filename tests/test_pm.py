@@ -18,7 +18,24 @@ def test_password_manager():
         # Test adding and retrieving password for first user
         pm.set("user1", img1, "gmail", "user1@example.com", "secret123")
         passwords = pm.get("user1", img1)
-        assert passwords["gmail"]["username"] == "user1@example.com"
+        assert passwords["gmail"][0]["username"] == "user1@example.com"
+        
+        # Test adding multiple credentials for same service
+        pm.set("user1", img1, "gmail", "user1.work@example.com", "work123")
+        passwords = pm.get("user1", img1)
+        assert len(passwords["gmail"]) == 2
+        assert passwords["gmail"][0]["username"] == "user1@example.com"
+        assert passwords["gmail"][1]["username"] == "user1.work@example.com"
+        
+        # Test retrieving specific service password
+        gmail_passwords = pm.get("user1", img1, "gmail")
+        assert len(gmail_passwords["gmail"]) == 2
+        assert gmail_passwords["gmail"][0]["username"] == "user1@example.com"
+        assert gmail_passwords["gmail"][1]["username"] == "user1.work@example.com"
+        
+        # Test retrieving non-existent service
+        empty_password = pm.get("user1", img1, "nonexistent")
+        assert len(empty_password) == 0
         
         # Test security with different iris
         try:
@@ -30,13 +47,15 @@ def test_password_manager():
         # Test multiple passwords for first user
         pm.set("user1", img1, "github", "user1", "github123")
         passwords = pm.get("user1", img1)
-        assert len(passwords) == 2
+        assert len(passwords) == 2  # Two services
+        assert len(passwords["gmail"]) == 2  # Two credentials for gmail
+        assert len(passwords["github"]) == 1  # One credential for github
         
         # Test registering second user
         pm.register("user2", img2)
         pm.set("user2", img2, "gmail", "user2@example.com", "secret456")
         passwords = pm.get("user2", img2)
-        assert passwords["gmail"]["username"] == "user2@example.com"
+        assert passwords["gmail"][0]["username"] == "user2@example.com"
         
         # Verify users can't access each other's passwords
         try:

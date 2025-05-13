@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Any, TypedDict
+from typing import Dict, Optional, Tuple, Any, TypedDict, List
 
 import appdirs
 import base64
@@ -21,7 +21,7 @@ class PasswordEntry(TypedDict):
 @dataclass
 class Database:
     templates: Dict[str, Dict[str, Any]]
-    passwords: Dict[str, Dict[str, PasswordEntry]]
+    passwords: Dict[str, Dict[str, List[PasswordEntry]]]
 
 
 class IrisPasswordManager:
@@ -31,7 +31,7 @@ class IrisPasswordManager:
         self.db_path = app_dir / f"{db_path}.npz"
         self.matcher = iris.HammingDistanceMatcher()
         self.threshold = 0.37
-        self.salt = b'iris_auth_salt'  # In production, this should be unique per installation
+        self.salt = b'iris_auth_salt' 
 
     def _derive_key(self, template: Dict[str, Any]) -> bytes:
         """Derive an encryption key from the iris template."""
@@ -77,7 +77,9 @@ class IrisPasswordManager:
             for user_id, user_passwords in encrypted_passwords.items():
                 if user_id in templates:
                     try:
-                        passwords[user_id] = self._decrypt(user_passwords, templates[user_id])
+                        key = self._derive_key(templates[user_id])
+                        f = Fernet(key)
+                        passwords[user_id] = eval(f.decrypt(user_passwords).decode())
                     except Exception:
                         passwords[user_id] = {}
             
@@ -124,6 +126,7 @@ class IrisPasswordManager:
         template = self._load_template_from_image(img_path)
         db.templates[user_id] = template
         self._store(db)
+        del template
 
     def check(self, user_id: Optional[str], img_path: str) -> Tuple[str, Dict[str, Any]]:
         """Verify an iris image against stored templates."""
@@ -156,14 +159,35 @@ class IrisPasswordManager:
         
         if user_id not in db.passwords:
             db.passwords[user_id] = {}
-        db.passwords[user_id][service] = PasswordEntry(username=username, password=password)
+        if service not in db.passwords[user_id]:
+            db.passwords[user_id][service] = []
+            
+        # Add new credentials
+        db.passwords[user_id][service].append(PasswordEntry(username=username, password=password))
         
         self._store(db)
 
-    def get(self, user_id: Optional[str], img_path: str) -> Dict[str, PasswordEntry]:
-        """Retrieve all passwords after iris authentication."""
+    def get(self, user_id: Optional[str], img_path: str, service: Optional[str] = None) -> Dict[str, List[PasswordEntry]]:
+        """Retrieve passwords after iris authentication.
+        
+        Args:
+            user_id: Optional user ID to check against
+            img_path: Path to the iris image for authentication
+            service: Optional service name to filter passwords by
+            
+        Returns:
+            Dict mapping service names to lists of password entries, or a single service's entries if service is specified
+        """
         user_id, _ = self.check(user_id, img_path)
-        return self._load().passwords.get(user_id, {})
+        db = self._load()
+        
+        if user_id not in db.passwords:
+            return {}
+            
+        passwords = db.passwords[user_id]
+        if service is not None:
+            return {service: passwords[service]} if service in passwords else {}
+        return passwords
     
     def clear(self) -> None:
         """Delete the password database file."""

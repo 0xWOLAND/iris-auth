@@ -79,27 +79,32 @@ class IrisPasswordManager:
                     try:
                         key = self._derive_key(templates[user_id])
                         f = Fernet(key)
-                        passwords[user_id] = eval(f.decrypt(user_passwords).decode())
+                        decrypted = eval(f.decrypt(user_passwords).decode())
+                        passwords[user_id] = decrypted
+                        del decrypted  # Clear decrypted data immediately
                     except Exception:
                         passwords[user_id] = {}
             
-            return Database(templates=templates, passwords=passwords)
+            result = Database(templates=templates, passwords=passwords)
+            return result
         except Exception:
             return Database(templates={}, passwords={})
 
     def _store(self, db: Database) -> None:
         """Store templates and passwords in the database file."""
-        encrypted_passwords = {
-            user_id: self._encrypt(user_passwords, db.templates[user_id])
-            for user_id, user_passwords in db.passwords.items()
-            if user_id in db.templates
-        }
+        encrypted_passwords = {}
+        for user_id, user_passwords in db.passwords.items():
+            if user_id in db.templates:
+                encrypted = self._encrypt(user_passwords, db.templates[user_id])
+                encrypted_passwords[user_id] = encrypted
+                del encrypted  # Clear encrypted data immediately
         
         np.savez(
             self.db_path,
             templates=np.array(db.templates, dtype=object),
             passwords=np.array(encrypted_passwords, dtype=object)
         )
+        del encrypted_passwords
 
     def _load_template_from_image(self, img_path: str) -> Dict[str, Any]:
         """Extract an iris template from an image file."""
@@ -152,21 +157,6 @@ class IrisPasswordManager:
 
         raise ValueError("Authentication failed")
 
-    def set(self, user_id: str, img_path: str, service: str, username: str, password: str) -> None:
-        """Save a password for a service using iris authentication."""
-        user_id, _ = self.check(user_id, img_path)
-        db = self._load()
-        
-        if user_id not in db.passwords:
-            db.passwords[user_id] = {}
-        if service not in db.passwords[user_id]:
-            db.passwords[user_id][service] = []
-            
-        # Add new credentials
-        db.passwords[user_id][service].append(PasswordEntry(username=username, password=password))
-        
-        self._store(db)
-
     def get(self, user_id: Optional[str], img_path: str, service: Optional[str] = None) -> Dict[str, List[PasswordEntry]]:
         """Retrieve passwords after iris authentication.
         
@@ -186,9 +176,70 @@ class IrisPasswordManager:
             
         passwords = db.passwords[user_id]
         if service is not None:
-            return {service: passwords[service]} if service in passwords else {}
-        return passwords
-    
+            result = {service: passwords[service]} if service in passwords else {}
+            return result
+            
+        result = passwords.copy()  # Create a copy to return
+        return result
+
+    def set(self, user_id: str, img_path: str, service: str, username: str, password: str) -> None:
+        """Save a password for a service using iris authentication.
+        
+        If a password already exists for the given username and service, it will be overwritten.
+        """
+        user_id, _ = self.check(user_id, img_path)
+        db = self._load()
+        
+        if user_id not in db.passwords:
+            db.passwords[user_id] = {}
+        if service not in db.passwords[user_id]:
+            db.passwords[user_id][service] = []
+            
+        # Check if username already exists for this service
+        for entry in db.passwords[user_id][service]:
+            if entry["username"] == username:
+                entry["password"] = password
+                self._store(db)
+                return
+                
+        # Add new credentials if username doesn't exist
+        db.passwords[user_id][service].append(PasswordEntry(username=username, password=password))
+        self._store(db)
+
+    def delete(self, user_id: str, img_path: str, service: str, username: str) -> None:
+        """Delete a specific username/password combination for a service.
+        
+        Args:
+            user_id: User ID to authenticate
+            img_path: Path to the iris image for authentication
+            service: Service name to delete credentials from
+            username: Username to delete
+            
+        Raises:
+            ValueError: If authentication fails or if the username doesn't exist for the service
+        """
+        user_id, _ = self.check(user_id, img_path)
+        db = self._load()
+        
+        if user_id not in db.passwords or service not in db.passwords[user_id]:
+            raise ValueError(f"No credentials found for service {service}")
+            
+        # Find and remove the specific username/password combination
+        original_length = len(db.passwords[user_id][service])
+        db.passwords[user_id][service] = [
+            entry for entry in db.passwords[user_id][service]
+            if entry["username"] != username
+        ]
+        
+        if len(db.passwords[user_id][service]) == original_length:
+            raise ValueError(f"No credentials found for username {username} in service {service}")
+            
+        # If no more credentials for this service, remove the service entry
+        if not db.passwords[user_id][service]:
+            del db.passwords[user_id][service]
+            
+        self._store(db)
+
     def clear(self) -> None:
         """Delete the password database file."""
         self.db_path.unlink(missing_ok=True)

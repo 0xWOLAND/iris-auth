@@ -27,11 +27,38 @@ def test_password_manager():
         assert passwords["gmail"][0]["username"] == "user1@example.com"
         assert passwords["gmail"][1]["username"] == "user1.work@example.com"
         
+        # Test overwriting existing password
+        pm.set("user1", img1, "gmail", "user1@example.com", "newsecret123")
+        passwords = pm.get("user1", img1)
+        assert len(passwords["gmail"]) == 2
+        assert passwords["gmail"][0]["username"] == "user1@example.com"
+        assert passwords["gmail"][0]["password"] == "newsecret123"
+        
+        # Test deleting specific credential
+        pm.delete("user1", img1, "gmail", "user1.work@example.com")
+        passwords = pm.get("user1", img1)
+        assert len(passwords["gmail"]) == 1
+        assert passwords["gmail"][0]["username"] == "user1@example.com"
+        
         # Test retrieving specific service password
         gmail_passwords = pm.get("user1", img1, "gmail")
-        assert len(gmail_passwords["gmail"]) == 2
+        assert len(gmail_passwords["gmail"]) == 1
         assert gmail_passwords["gmail"][0]["username"] == "user1@example.com"
-        assert gmail_passwords["gmail"][1]["username"] == "user1.work@example.com"
+        assert gmail_passwords["gmail"][0]["password"] == "newsecret123"
+        
+        # Test deleting non-existent credential
+        try:
+            pm.delete("user1", img1, "gmail", "nonexistent@example.com")
+            assert False, "Should have raised ValueError for non-existent username"
+        except ValueError:
+            pass
+            
+        # Test deleting from non-existent service
+        try:
+            pm.delete("user1", img1, "nonexistent", "user1@example.com")
+            assert False, "Should have raised ValueError for non-existent service"
+        except ValueError:
+            pass
         
         # Test retrieving non-existent service
         empty_password = pm.get("user1", img1, "nonexistent")
@@ -43,6 +70,9 @@ def test_password_manager():
             assert False, "Security breach: Different iris was accepted"
         except ValueError:
             pass
+        
+        # Add back the second Gmail credential
+        pm.set("user1", img1, "gmail", "user1.work@example.com", "work123")
         
         # Test multiple passwords for first user
         pm.set("user1", img1, "github", "user1", "github123")
